@@ -348,7 +348,7 @@ def main():
     tower_group.add(Tower(14 * TILE_SIZE, 4 * TILE_SIZE))
     
     spawn_timer = 0
-    TRAP_COST = 50  # トラップの設置コスト
+    TRAP_COST = 20  # トラップの設置コスト
     
     start_ticks = pygame.time.get_ticks()
     
@@ -428,6 +428,7 @@ def main():
        
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
+                    start_ticks = pygame.time.get_ticks()
                     gm.reset_game()
                     enemy_group.empty()                        
                     bullet_group.empty()
