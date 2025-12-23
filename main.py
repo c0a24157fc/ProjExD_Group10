@@ -39,7 +39,6 @@ TILE_SPAWN = 3
 # ゲーム状態
 STATE_PLAY = 1
 
-
 # ====================================================
 #  2. クラス定義エリア
 # ====================================================
@@ -52,12 +51,11 @@ class GameManager:
         self.chicken = 100  # 通貨
         self.life = 20      # 拠点ライフ
         self.state = STATE_PLAY
-        
-        # 【担当E】ここにフィーバー用の変数を追加してください (timer, is_feverなど)
-        self.fever_gauge = 30 # フィーバーゲージ (最大30)
-        self.is_fever = False # フィーバー中かどうかのフラグ
-        self.fever_timer = 0 # フィーバーの残り時間 (フレーム数)
-        self.FEVER_DURATION = FPS * 20 # 20秒間
+        # フィーバー関連の初期化
+        self.fever_gauge = 30  # フィーバーゲージ (最大30)
+        self.is_fever = False  # フィーバー中かどうかのフラグ
+        self.fever_timer = 0   # フィーバー残り時間 (フレーム数)
+        self.FEVER_DURATION = FPS * 20  # 20秒間
 
     def activate_fever(self):
         """フィーバー状態を開始する"""
@@ -68,7 +66,7 @@ class GameManager:
             print("--- FEVER TIME START! ---")
 
     def update(self):
-        # 【担当E】ここでフィーバータイマーの減算処理などを書いてください
+        # フィーバータイマーの減算処理
         if self.is_fever:
             self.fever_timer -= 1
             if self.fever_timer <= 0:
@@ -76,10 +74,6 @@ class GameManager:
                 self.fever_timer = 0
                 print("--- FEVER TIME END! ---")
 
-    def check_gameover(self):
-        if self.life <= 0:
-            print("Game Over! (Logic not implemented yet)")
-        
     def check_gameover(self):
         if self.life <= 0:
             print("Game Over! (Logic not implemented yet)")
@@ -162,7 +156,6 @@ class Koukaton(pygame.sprite.Sprite):
     敵キャラクタークラス
     """
     def __init__(self, waypoints, is_elite = False):
-        
         super().__init__()
         self.image = pygame.Surface((20, 20))
         self.image.fill(PURPLE if is_elite else RED) # エリートなら色を変える
@@ -244,7 +237,29 @@ class Tower(pygame.sprite.Sprite):
         self.range = 150
         self.cooldown = 30
         self.timer = 0
-
+        
+        self.level = 1 # 現在のレベル
+        self.max_level = 5 #　最大レベル
+        self.cost = 50 #基本強化コスト
+        
+    def get_upgrade_cost(self):
+        """
+        タワーの強化コストを計算するメソッド
+        """
+        return self.cost * self.level
+    
+    def upgrade(self):
+        """
+        タワーの強化メソッド
+        """
+        if self.level < self.max_level:
+            self.level += 1
+            self.range += 20
+            self.cooldown = max(5, self.cooldown - 5)
+            
+            new_green = min(255, 50 + self.level * 40)
+            self.image.fill((0, new_green, 255))
+            
     def update(self, enemy_group, bullet_group, is_fever=False):
         # 【担当E】is_feverフラグを受け取り、フィーバー中はクールダウンを短くしてください
         # 通常のクールダウン時間
@@ -270,6 +285,9 @@ class Tower(pygame.sprite.Sprite):
 
 
 class Bullet(pygame.sprite.Sprite):
+    """
+    弾クラス
+    """
     def __init__(self, start_pos, target_pos):
         super().__init__()
         self.image = pygame.Surface((8, 8))
@@ -326,7 +344,29 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+        
             
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = pygame.mouse.get_pos()
+                
+                # 左クリック：タワー配置
+                if event.button == 1:
+                    clicked_towers = [t for t in tower_group if t.rect.collidepoint(mx, my)]
+                    if clicked_towers:
+                        target_tower = clicked_towers[0]
+                        cost = target_tower.get_upgrade_cost()
+                        
+                        if target_tower.level < target_tower.max_level and gm.chicken >= cost:
+                            gm.chicken -= cost
+                            target_tower.upgrade()
+                    
+                    # 新規配置
+                    elif map_manager.is_placeable(mx, my):
+                         cost = 100
+                         if gm.chicken >= cost:
+                             gm.chicken -= cost
+                             tower_group.add(Tower((mx//TILE_SIZE)*TILE_SIZE, (my//TILE_SIZE)*TILE_SIZE))
+                    
         #             # 新規配置
         #             # if map_manager.is_placeable(mx, my):
         #             #      cost = 100
@@ -381,6 +421,7 @@ def main():
             if gm.is_fever:
                 spawn_interval = 50  # 【担当E】フィーバー中は出現間隔を短くする
             spawn_timer += 1
+            
             if spawn_timer >= spawn_interval: 
                 spawn_timer = 0
                 is_elite = random.random() < 0.2 # 20%でエリート
